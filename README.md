@@ -1,7 +1,8 @@
 tdtool
 ======
-```bash
 tdtool.py fork from telldus/telldus with sensor support
+
+```bash
 Usage: ./tdtool.py [ options ]
 
 Options:
