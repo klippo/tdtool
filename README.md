@@ -1,6 +1,6 @@
 tdtool
 ======
-
+```bash
 tdtool.py fork from telldus/telldus with sensor support
 Usage: ./tdtool.py [ options ]
 
@@ -53,3 +53,4 @@ Options:
              Shows this screen.
 
 Report bugs to <klippo@deny.se>
+```
