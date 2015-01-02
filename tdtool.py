@@ -1,12 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sys, getopt, httplib, urllib, json, os
+import sys
+import getopt
+import httplib
+import urllib
+import json
+import os
 import oauth.oauth as oauth
 from configobj import ConfigObj
 
-PUBLIC_KEY = 'FEHUVEW84RAFR5SP22RABURUPHAFRUNU'
-PRIVATE_KEY = 'ZUXEVEGA9USTAZEWRETHAQUBUR69U6EF'
+PUBLIC_KEY = ''
+PRIVATE_KEY = ''
 
 TELLSTICK_TURNON = 1
 TELLSTICK_TURNOFF = 2
@@ -23,24 +28,25 @@ TELLSTICK_WINDDIRECTION = 16
 TELLSTICK_WINDAVERAGE = 32
 TELLSTICK_WINDGUST = 64
 
-SUPPORTED_METHODS = TELLSTICK_TURNON | TELLSTICK_TURNOFF | TELLSTICK_BELL | TELLSTICK_DIM | TELLSTICK_UP | TELLSTICK_DOWN;
-SUPPORTED_SENSOR_METHODS = TELLSTICK_TEMPERATURE | TELLSTICK_HUMIDITY;
+SUPPORTED_METHODS = TELLSTICK_TURNON | TELLSTICK_TURNOFF | TELLSTICK_BELL | TELLSTICK_DIM | TELLSTICK_UP | TELLSTICK_DOWN
+SUPPORTED_SENSOR_METHODS = TELLSTICK_TEMPERATURE | TELLSTICK_HUMIDITY
 
 
-def printUsage():
+def print_usage():
     print("Usage: %s [ options ]" % sys.argv[0])
     print("")
     print("Options:")
-    print("         -[lnfdbvh] [ --list ] [ --help ]")
+    print("         -[lsnfdbvh] [ --list ] [ --help ]")
+    print("                      [ --sensor sensor ]")
     print("                      [ --on device ] [ --off device ] [ --bell device ]")
     print("                      [ --dimlevel level --dim device ]")
     print("                      [ --up device --down device ]")
     print("")
     print("       --list (-l short option)")
-    print("             List currently configured devices.")
+    print("             List currently configured devices and sensors.")
     print("")
-    print("       --help (-h short option)")
-    print("             Shows this screen.")
+    print("       --sensor sensor (-s short option)")
+    print("             Display information from the specified sensor.")
     print("")
     print("       --on device (-n short option)")
     print("             Turns on device. 'device' must be an integer of the device-id")
@@ -74,45 +80,49 @@ def printUsage():
     print("             be an integer of the device-id")
     print("             Device-id and name is outputed with the --list option")
     print("")
-    print("Report bugs to <info.tech@telldus.se>")
+    print("       --help (-h short option)")
+    print("             Shows this screen.")
+    print("")
+    print("Report bugs to <klippo@deny.se>")
 
 
-def listDevices():
-    devices = doRequest('devices/list', {'supportedMethods': SUPPORTED_METHODS})
-    sensors = doRequest('sensors/list', {'supportedMethods': SUPPORTED_SENSOR_METHODS})
-    print("Number of devices: %i" % len(devices['device']));
+def list_devices():
+    devices = do_request('devices/list', {'supportedMethods': SUPPORTED_METHODS})
+    sensors = do_request('sensors/list', {'supportedMethods': SUPPORTED_SENSOR_METHODS})
+    print("Number of devices: %i" % len(devices['device']))
     for device in devices['device']:
-        if (device['state'] == TELLSTICK_TURNON):
+        if device['state'] == TELLSTICK_TURNON:
             state = 'ON'
-        elif (device['state'] == TELLSTICK_TURNOFF):
+        elif device['state'] == TELLSTICK_TURNOFF:
             state = 'OFF'
-        elif (device['state'] == TELLSTICK_DIM):
+        elif device['state'] == TELLSTICK_DIM:
             state = "DIMMED"
-        elif (device['state'] == TELLSTICK_UP):
+        elif device['state'] == TELLSTICK_UP:
             state = "UP"
-        elif (device['state'] == TELLSTICK_DOWN):
+        elif device['state'] == TELLSTICK_DOWN:
             state = "DOWN"
         else:
             state = 'Unknown state'
 
         print("%s\t%s\t%s" % (device['id'], device['name'].ljust(30), state))
 
-
     print("\nNumber of sensors: %i" % len(sensors['sensor']))
     for sensor in sensors['sensor']:
-        displaySensor(sensor['id'])
+        display_sensor(sensor['id'])
 
-def displaySensor(sensor_id):
-    sensor_response = doRequest('sensor/info', {'id': sensor_id})
 
-    if ('error' in sensor_response):
-        name = ''
-        retString = sensor_response['error']
+def display_sensor(sensor_id):
+    sensor_response = do_request('sensor/info', {'id': sensor_id})
+
+    if 'error' in sensor_response:
+        print(sensor_response)
+        sys.exit(1)
     else:
         name = sensor_response['name']
 
     print("%s %s" % (sensor_response['id'], name))
     for data in sensor_response['data']:
+        unit = ''
         if data['name'] == 'temp':
             unit = u'\N{DEGREE SIGN}'
         elif data['name'] == 'humidity':
@@ -121,40 +131,40 @@ def displaySensor(sensor_id):
         print("\t%s\t%s%s" % (data['name'].title().ljust(30), data['value'], unit))
 
 
-def doMethod(deviceId, methodId, methodValue=0):
-    response = doRequest('device/info', {'id': deviceId})
+def do_method(device_id, method_id, method_value=0):
+    response = do_request('device/info', {'id': device_id})
 
-    if (methodId == TELLSTICK_TURNON):
+    if method_id == TELLSTICK_TURNON:
         method = 'on'
-    elif (methodId == TELLSTICK_TURNOFF):
+    elif method_id == TELLSTICK_TURNOFF:
         method = 'off'
-    elif (methodId == TELLSTICK_BELL):
+    elif method_id == TELLSTICK_BELL:
         method = 'bell'
-    elif (methodId == TELLSTICK_UP):
+    elif method_id == TELLSTICK_UP:
         method = 'up'
-    elif (methodId == TELLSTICK_DOWN):
+    elif method_id == TELLSTICK_DOWN:
         method = 'down'
 
-    if ('error' in response):
+    if 'error' in response:
         name = ''
-        retString = response['error']
+        retstring = response['error']
     else:
         name = response['name']
-        response = doRequest('device/command', {'id': deviceId, 'method': methodId, 'value': methodValue})
-        if ('error' in response):
-            retString = response['error']
+        response = do_request('device/command', {'id': device_id, 'method': method_id, 'value': method_value})
+        if 'error' in response:
+            retstring = response['error']
         else:
-            retString = response['status']
+            retstring = response['status']
 
-    if (methodId in (TELLSTICK_TURNON, TELLSTICK_TURNOFF)):
-        print("Turning %s device %s, %s - %s" % ( method, deviceId, name, retString));
-    elif (methodId in (TELLSTICK_BELL, TELLSTICK_UP, TELLSTICK_DOWN)):
-        print("Sending %s to: %s %s - %s" % (method, deviceId, name, retString))
-    elif (methodId == TELLSTICK_DIM):
-        print("Dimming device: %s %s to %s - %s" % (deviceId, name, methodValue, retString))
+    if method_id in (TELLSTICK_TURNON, TELLSTICK_TURNOFF):
+        print("Turning %s device %s, %s - %s" % (method, device_id, name, retstring))
+    elif method_id in (TELLSTICK_BELL, TELLSTICK_UP, TELLSTICK_DOWN):
+        print("Sending %s to: %s %s - %s" % (method, device_id, name, retstring))
+    elif method_id == TELLSTICK_DIM:
+        print("Dimming device: %s %s to %s - %s" % (device_id, name, method_value, retstring))
 
 
-def doRequest(method, params):
+def do_request(method, params):
     global config
     consumer = oauth.OAuthConsumer(PUBLIC_KEY, PRIVATE_KEY)
     token = oauth.OAuthToken(config['token'], config['tokenSecret'])
@@ -173,7 +183,7 @@ def doRequest(method, params):
     return json.load(response)
 
 
-def requestToken():
+def request_token():
     global config
     consumer = oauth.OAuthConsumer(PUBLIC_KEY, PRIVATE_KEY)
     request = oauth.OAuthRequest.from_consumer_and_token(consumer, http_url='http://api.telldus.com/oauth/requestToken')
@@ -190,7 +200,7 @@ def requestToken():
     saveConfig()
 
 
-def getAccessToken():
+def get_access_token():
     global config
     consumer = oauth.OAuthConsumer(PUBLIC_KEY, PRIVATE_KEY)
     token = oauth.OAuthToken(config['requestToken'], config['requestTokenSecret'])
@@ -217,15 +227,15 @@ def authenticate():
     try:
         opts, args = getopt.getopt(sys.argv[1:], '', ['authenticate'])
         for opt, arg in opts:
-            if opt in ('--authenticate'):
-                getAccessToken()
+            if opt in '--authenticate':
+                get_access_token()
                 return
     except getopt.GetoptError:
         pass
-    requestToken()
+    request_token()
 
 
-def saveConfig():
+def save_config():
     global config
     try:
         os.makedirs(os.environ['HOME'] + '/.config/Telldus')
@@ -236,53 +246,51 @@ def saveConfig():
 
 def main(argv):
     global config
-    if ('token' not in config or config['token'] == ''):
+    if 'token' not in config or config['token'] == '':
         authenticate()
         return
     try:
         opts, args = getopt.getopt(argv, "ln:f:d:b:v:h:s:",
                                    ["list", "on=", "off=", "dim=", "bell=", "dimlevel=", "up=", "down=", "help", "sensor"])
     except getopt.GetoptError:
-        printUsage()
+        print_usage()
         sys.exit(2)
 
     dimlevel = -1
 
     for opt, arg in opts:
         if opt in ("-h", "--help"):
-            printUsage()
+            print_usage()
 
         elif opt in ("-l", "--list"):
-            listDevices()
+            list_devices()
 
         elif opt in ("-s", "--sensor"):
-            displaySensor(arg)
+            display_sensor(arg)
 
         elif opt in ("-n", "--on"):
-            doMethod(arg, TELLSTICK_TURNON)
+            do_method(arg, TELLSTICK_TURNON)
 
         elif opt in ("-f", "--off"):
-            doMethod(arg, TELLSTICK_TURNOFF)
+            do_method(arg, TELLSTICK_TURNOFF)
 
         elif opt in ("-b", "--bell"):
-            doMethod(arg, TELLSTICK_BELL)
+            do_method(arg, TELLSTICK_BELL)
 
         elif opt in ("-d", "--dim"):
-            if (dimlevel < 0):
+            if dimlevel < 0:
                 print("Dimlevel must be set with --dimlevel before --dim")
             else:
-                doMethod(arg, TELLSTICK_DIM, dimlevel)
+                do_method(arg, TELLSTICK_DIM, dimlevel)
 
         elif opt in ("-v", "--dimlevel"):
             dimlevel = arg
 
-        elif opt in ("--up"):
-            doMethod(arg, TELLSTICK_UP)
+        elif opt in "--up":
+            do_method(arg, TELLSTICK_UP)
 
-        elif opt in ("--down"):
-            doMethod(arg, TELLSTICK_DOWN)
-
-
+        elif opt in "--down":
+            do_method(arg, TELLSTICK_DOWN)
 
 
 if __name__ == "__main__":
