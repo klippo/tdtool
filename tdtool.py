@@ -197,7 +197,7 @@ def request_token():
     print 'After logging in and accepting to use this application run:\n%s --authenticate' % (sys.argv[0])
     config['requestToken'] = str(token.key)
     config['requestTokenSecret'] = str(token.secret)
-    saveConfig()
+    save_config()
 
 
 def get_access_token():
@@ -220,7 +220,7 @@ def get_access_token():
     config['token'] = str(token.key)
     config['tokenSecret'] = str(token.secret)
     print 'Authentication successful, you can now use tdtool'
-    saveConfig()
+    save_config()
 
 
 def authenticate():
